@@ -395,264 +395,275 @@
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
-        // --- 1. Floating Ambient Light Particles Canvas ---
-        const canvas = document.getElementById('particleCanvas');
-        const ctx = canvas.getContext('2d');
-        let particles = [];
+    // --- 0. 安全過濾 HTML 函數（必須放在最前面，避免渲染中斷） ---
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+    // --- 1. Floating Ambient Light Particles Canvas ---
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    class Particle {
+        constructor() {
+            this.reset();
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        class Particle {
-            constructor() {
+        reset() {
+            this.x = Math.random() * canvas.width;
+            this.y = canvas.height + Math.random() * 100;
+            this.size = Math.random() * 3 + 1;
+            this.speedY = Math.random() * 0.4 + 0.1;
+            this.speedX = (Math.random() - 0.5) * 0.2;
+            this.opacity = Math.random() * 0.5 + 0.2;
+            this.pulseSpeed = Math.random() * 0.01 + 0.005;
+        }
+        update() {
+            this.y -= this.speedY;
+            this.x += this.speedX;
+            this.opacity += Math.sin(Date.now() * this.pulseSpeed) * 0.005;
+            if (this.y < -10) {
                 this.reset();
             }
-            reset() {
-                this.x = Math.random() * canvas.width;
-                this.y = canvas.height + Math.random() * 100;
-                this.size = Math.random() * 3 + 1;
-                this.speedY = Math.random() * 0.4 + 0.1;
-                this.speedX = (Math.random() - 0.5) * 0.2;
-                this.opacity = Math.random() * 0.5 + 0.2;
-                this.pulseSpeed = Math.random() * 0.01 + 0.005;
-            }
-            update() {
-                this.y -= this.speedY;
-                this.x += this.speedX;
-                this.opacity += Math.sin(Date.now() * this.pulseSpeed) * 0.005;
-                if (this.y < -10) {
-                    this.reset();
-                }
-            }
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(245, 158, 11, ${Math.max(0, Math.min(1, this.opacity))})`;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = 'rgba(245, 158, 11, 0.5)';
-                ctx.fill();
-            }
         }
-
-        for (let i = 0; i < 45; i++) {
-            particles.push(new Particle());
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(245, 158, 11, ${Math.max(0, Math.min(1, this.opacity))})`;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(245, 158, 11, 0.5)';
+            ctx.fill();
         }
+    }
 
-        function animateParticles() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            particles.forEach(p => {
-                p.update();
-                p.draw();
-            });
-            requestAnimationFrame(animateParticles);
-        }
-        animateParticles();
+    for (let i = 0; i < 45; i++) {
+        particles.push(new Particle());
+    }
+
+    function animateParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+            p.update();
+            p.draw();
+        });
+        requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
 
 
-        // --- 2. Tribute Interactive Counters & Local Storage ---
-        let tributeCounts = {
-            candle: parseInt(localStorage.getItem('memorial_candles') || '1280'),
-            flower: parseInt(localStorage.getItem('memorial_flowers') || '954'),
-            wine: parseInt(localStorage.getItem('memorial_wine') || '620')
-        };
+    // --- 2. Tribute Interactive Counters & Local Storage ---
+    let tributeCounts = {
+        candle: parseInt(localStorage.getItem('memorial_candles') || '1280'),
+        flower: parseInt(localStorage.getItem('memorial_flowers') || '954'),
+        wine: parseInt(localStorage.getItem('memorial_wine') || '620')
+    };
 
-        function updateDisplayCounts() {
-            document.getElementById('candleCount').innerText = tributeCounts.candle.toLocaleString();
-            document.getElementById('flowerCount').innerText = tributeCounts.flower.toLocaleString();
-            document.getElementById('wineCount').innerText = tributeCounts.wine.toLocaleString();
-        }
+    function updateDisplayCounts() {
+        document.getElementById('candleCount').innerText = tributeCounts.candle.toLocaleString();
+        document.getElementById('flowerCount').innerText = tributeCounts.flower.toLocaleString();
+        document.getElementById('wineCount').innerText = tributeCounts.wine.toLocaleString();
+    }
+    updateDisplayCounts();
+
+    function performTribute(type) {
+        tributeCounts[type]++;
+        localStorage.setItem(`memorial_${type}s`, tributeCounts[type]);
         updateDisplayCounts();
 
-        function performTribute(type) {
-            tributeCounts[type]++;
-            localStorage.setItem(`memorial_${type}s`, tributeCounts[type]);
-            updateDisplayCounts();
-
-            // Show Feedback Toast
-            const toast = document.getElementById('tributeToast');
-            const toastMsg = document.getElementById('toastMsg');
-            
-            const messages = {
-                candle: '您已獻上一條香菸，祝福 Hiee 進去後可以用香菸交到很多朋友。',
-                flower: '您已獻上菊花，祝福 Hiee 進去後能成功守護他的菊花。',
-                wine: '您已獻上敬酒，祝福 Hiee 能夠喝醉忘記這件事情。'
-            };
-
-            toastMsg.innerText = messages[type];
-            toast.classList.remove('hidden');
-
-            setTimeout(() => {
-                toast.classList.add('hidden');
-            }, 3500);
-        }
-
-
-        // --- 3. Memory Book / Message Board ---
-      // 1. 初始化 Firebase
-const firebaseConfig = {
-    apiKey: "AIzaSyAD-3HTS-f9lF08Kv6dN4w-juOY4MgBx5w",
-    authDomain: "timgay-e6c50.firebaseapp.com",
-    databaseURL: "https://timgay-e6c50-default-rtdb.firebaseio.com/",
-    projectId: "timgay-e6c50",
-    storageBucket: "timgay-e6c50.firebasestorage.app",
-    messagingSenderId: "933961206315",
-    appId: "1:933961206315:web:9c02efe8f267c7e639786e"
-};
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-const messagesRef = database.ref('messages');
-
-// 2. 監聽資料庫變化（實時接收所有人的留言）
-messagesRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    const container = document.getElementById('messagesContainer');
-    container.innerHTML = ''; // 清空舊內容
-    
-    if (data) {
-        const msgArray = Object.values(data);
-        document.getElementById('msgCount').innerText = msgArray.length;
+        // Show Feedback Toast
+        const toast = document.getElementById('tributeToast');
+        const toastMsg = document.getElementById('toastMsg');
         
-        // 依照時間降序排列並渲染
-        msgArray.reverse().forEach(msg => {
-            const item = document.createElement('div');
-            item.className = 'bg-stone-950/40 border border-stone-800/80 p-4 rounded-xl font-sans space-y-2';
-            item.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div>
-                        <span class="text-amber-300 font-medium text-sm">${escapeHtml(msg.name)}</span>
-                        <span class="text-stone-500 text-xs ml-2">（${escapeHtml(msg.relation)}）</span>
-                    </div>
-                    <span class="text-stone-500 text-xs">${msg.time}</span>
-                </div>
-                <p class="text-stone-300 text-sm leading-relaxed font-serif">
-                    ${escapeHtml(msg.text)}
-                </p>
-            `;
-            container.appendChild(item);
-        });
-    } else {
-        document.getElementById('msgCount').innerText = '0';
+        const messages = {
+            candle: '您已獻上一條香菸，祝福 Hiee 進去後可以用香菸交到很多朋友。',
+            flower: '您已獻上菊花，祝福 Hiee 進去後能成功守護他的菊花。',
+            wine: '您已獻上敬酒，祝福 Hiee 能夠喝醉忘記這件事情。'
+        };
+
+        toastMsg.innerText = messages[type];
+        toast.classList.remove('hidden');
+
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 3500);
     }
-});
 
-// 3. 提交留言到雲端資料庫
-function handleMessageSubmit(e) {
-    e.preventDefault();
-    const name = document.getElementById('visitorName').value.trim();
-    const relation = document.getElementById('visitorRelation').value.trim();
-    const text = document.getElementById('visitorMessage').value.trim();
 
-    if (!name || !relation || !text) return;
+    // --- 3. Memory Book / Message Board ---
+    // 1. 初始化 Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyAD-3HTS-f9lF08Kv6dN4w-juOY4MgBx5w",
+        authDomain: "timgay-e6c50.firebaseapp.com",
+        databaseURL: "https://timgay-e6c50-default-rtdb.firebaseio.com/",
+        projectId: "timgay-e6c50",
+        storageBucket: "timgay-e6c50.firebasestorage.app",
+        messagingSenderId: "933961206315",
+        appId: "1:933961206315:web:9c02efe8f267c7e639786e"
+    };
+    
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const database = firebase.database();
+    const messagesRef = database.ref('messages');
 
-    const now = new Date();
-    const timeStr = now.getFullYear() + '-' + 
-        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(now.getDate()).padStart(2, '0') + ' ' + 
-        String(now.getHours()).padStart(2, '0') + ':' + 
-        String(now.getMinutes()).padStart(2, '0');
-
-    // 推送到 Firebase
-    messagesRef.push({
-        name: name,
-        relation: relation,
-        text: text,
-        time: timeStr,
-        timestamp: Date.now()
+    // 2. 監聽資料庫變化（實時接收所有人的留言）
+    messagesRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        const container = document.getElementById('messagesContainer');
+        if (!container) return;
+        
+        container.innerHTML = ''; // 清空舊內容
+        
+        if (data) {
+            const msgArray = Object.values(data);
+            document.getElementById('msgCount').innerText = msgArray.length;
+            
+            // 依照時間降序排列並渲染
+            msgArray.reverse().forEach(msg => {
+                const item = document.createElement('div');
+                item.className = 'bg-stone-950/40 border border-stone-800/80 p-4 rounded-xl font-sans space-y-2';
+                item.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-amber-300 font-medium text-sm">${escapeHtml(msg.name)}</span>
+                            <span class="text-stone-500 text-xs ml-2">（${escapeHtml(msg.relation)}）</span>
+                        </div>
+                        <span class="text-stone-500 text-xs">${escapeHtml(msg.time)}</span>
+                    </div>
+                    <p class="text-stone-300 text-sm leading-relaxed font-serif">
+                        ${escapeHtml(msg.text)}
+                    </p>
+                `;
+                container.appendChild(item);
+            });
+        } else {
+            document.getElementById('msgCount').innerText = '0';
+        }
     });
 
-    document.getElementById('messageForm').reset();
-    performTribute('flower');
-}
+    // 3. 提交留言到雲端資料庫
+    function handleMessageSubmit(e) {
+        e.preventDefault();
+        const name = document.getElementById('visitorName').value.trim();
+        const relation = document.getElementById('visitorRelation').value.trim();
+        const text = document.getElementById('visitorMessage').value.trim();
 
+        if (!name || !relation || !text) return;
 
-        // --- 4. Gentle Web Audio API Ambient Pad ---
-        let audioCtx = null;
-        let isPlaying = false;
-        let mainGain = null;
-        let osc1 = null, osc2 = null;
+        const now = new Date();
+        const timeStr = now.getFullYear() + '-' + 
+            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(now.getDate()).padStart(2, '0') + ' ' + 
+            String(now.getHours()).padStart(2, '0') + ':' + 
+            String(now.getMinutes()).padStart(2, '0');
 
-        // 控制背景音樂播放與暫停
-function toggleAudio() {
-    const audio = document.getElementById('bgAudio');
-    const icon = document.getElementById('audioIcon');
-    const text = document.getElementById('audioText');
-    const btn = document.getElementById('audioToggleBtn');
-
-    if (audio.paused) {
-        audio.play().then(() => {
-            icon.className = 'fa-solid fa-volume-high text-amber-400';
-            text.innerText = '背景音樂播放中';
-            btn.classList.add('border-amber-500/50');
-        }).catch(err => {
-            console.log("播放失敗，請確認音樂檔案路徑：", err);
+        // 推送到 Firebase
+        messagesRef.push({
+            name: name,
+            relation: relation,
+            text: text,
+            time: timeStr,
+            timestamp: Date.now()
         });
-    } else {
-        audio.pause();
-        icon.className = 'fa-solid fa-volume-xmark text-stone-400';
-        text.innerText = '開啟背景音效';
-        btn.classList.remove('border-amber-500/50');
+
+        document.getElementById('messageForm').reset();
+        performTribute('flower');
     }
-}
 
-        function startAmbientAudio() {
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!audioCtx) {
-                    audioCtx = new AudioContext();
-                }
 
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
+    // --- 4. Gentle Web Audio API Ambient Pad ---
+    let audioCtx = null;
+    let isPlaying = false;
+    let mainGain = null;
+    let osc1 = null, osc2 = null;
 
-                // Master Gain
-                mainGain = audioCtx.createGain();
-                mainGain.gain.setValueAtTime(0.01, audioCtx.currentTime);
-                mainGain.gain.exponentialRampToValueAtTime(0.12, audioCtx.currentTime + 3); // Soft fade-in
-                mainGain.connect(audioCtx.destination);
+    // 控制背景音樂播放與暫停
+    function toggleAudio() {
+        const audio = document.getElementById('bgAudio');
+        const icon = document.getElementById('audioIcon');
+        const text = document.getElementById('audioText');
+        const btn = document.getElementById('audioToggleBtn');
 
-                // Low warm drone sine wave 1 (A2 - 110Hz)
-                osc1 = audioCtx.createOscillator();
-                osc1.type = 'sine';
-                osc1.frequency.setValueAtTime(110, audioCtx.currentTime);
-
-                // Warm harmonic sine wave 2 (E3 - 164.81Hz)
-                osc2 = audioCtx.createOscillator();
-                osc2.type = 'sine';
-                osc2.frequency.setValueAtTime(164.81, audioCtx.currentTime);
-
-                osc1.connect(mainGain);
-                osc2.connect(mainGain);
-
-                osc1.start();
-                osc2.start();
-
-                isPlaying = true;
-                document.getElementById('audioIcon').className = 'fa-solid fa-volume-high text-amber-400';
-                document.getElementById('audioText').innerText = '靜心音效播放中';
-                document.getElementById('audioToggleBtn').classList.add('border-amber-500/50');
-            } catch (e) {
-                console.log("Web Audio API Error:", e);
-            }
+        if (audio.paused) {
+            audio.play().then(() => {
+                icon.className = 'fa-solid fa-volume-high text-amber-400';
+                text.innerText = '背景音樂播放中';
+                btn.classList.add('border-amber-500/50');
+            }).catch(err => {
+                console.log("播放失敗，請確認音樂檔案路徑：", err);
+            });
+        } else {
+            audio.pause();
+            icon.className = 'fa-solid fa-volume-xmark text-stone-400';
+            text.innerText = '開啟背景音效';
+            btn.classList.remove('border-amber-500/50');
         }
+    }
 
-        function stopAmbientAudio() {
-            if (mainGain && audioCtx) {
-                mainGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.5);
-                setTimeout(() => {
-                    if (osc1) osc1.stop();
-                    if (osc2) osc2.stop();
-                    isPlaying = false;
-                    document.getElementById('audioIcon').className = 'fa-solid fa-volume-xmark text-stone-400';
-                    document.getElementById('audioText').innerText = '開啟背景音效';
-                    document.getElementById('audioToggleBtn').classList.remove('border-amber-500/50');
-                }, 1500);
+    function startAmbientAudio() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
             }
+
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            // Master Gain
+            mainGain = audioCtx.createGain();
+            mainGain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+            mainGain.gain.exponentialRampToValueAtTime(0.12, audioCtx.currentTime + 3); // Soft fade-in
+            mainGain.connect(audioCtx.destination);
+
+            // Low warm drone sine wave 1 (A2 - 110Hz)
+            osc1 = audioCtx.createOscillator();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(110, audioCtx.currentTime);
+
+            // Warm harmonic sine wave 2 (E3 - 164.81Hz)
+            osc2 = audioCtx.createOscillator();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(164.81, audioCtx.currentTime);
+
+            osc1.connect(mainGain);
+            osc2.connect(mainGain);
+
+            osc1.start();
+            osc2.start();
+
+            isPlaying = true;
+            document.getElementById('audioIcon').className = 'fa-solid fa-volume-high text-amber-400';
+            document.getElementById('audioText').innerText = '靜心音效播放中';
+            document.getElementById('audioToggleBtn').classList.add('border-amber-500/50');
+        } catch (e) {
+            console.log("Web Audio API Error:", e);
         }
-    </script>
+    }
+
+    function stopAmbientAudio() {
+        if (mainGain && audioCtx) {
+            mainGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.5);
+            setTimeout(() => {
+                if (osc1) osc1.stop();
+                if (osc2) osc2.stop();
+                isPlaying = false;
+                document.getElementById('audioIcon').className = 'fa-solid fa-volume-xmark text-stone-400';
+                document.getElementById('audioText').innerText = '開啟背景音效';
+                document.getElementById('audioToggleBtn').classList.remove('border-amber-500/50');
+            }, 1500);
+        }
+    }
+</script>
 </body>
 </html>
